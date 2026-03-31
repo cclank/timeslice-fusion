@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>时空融影 TimeSlice Fusion — 每一帧风景，都值得有你</title>
+<meta name="description" content="将360°全景风景视频与自拍照融合，AI生成电影级短视频，让你走进每一处风景。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: hsl(40, 30%, 97%);
+  --bg-warm: hsl(38, 40%, 94%);
+  --bg-card: hsl(0, 0%, 100%);
+  --surface: hsl(38, 25%, 91%);
+  --border: hsl(38, 20%, 85%);
+  --text: hsl(20, 15%, 15%);
+  --text-secondary: hsl(20, 10%, 40%);
+  --text-muted: hsl(20, 8%, 58%);
+  --accent: hsl(32, 85%, 52%);
+  --accent-warm: hsl(18, 75%, 55%);
+  --accent-gold: hsl(42, 78%, 58%);
+  --accent-deep: hsl(25, 60%, 38%);
+  --font-display: 'Cormorant Garamond', 'Noto Serif SC', serif;
+  --font-body: 'DM Sans', 'Noto Serif SC', sans-serif;
+  --font-serif: 'Noto Serif SC', serif;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+html { scroll-behavior: smooth; font-size: 16px; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Grain overlay ── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.028;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Typography ── */
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; line-height: 1.2; }
+
+.section-label {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 1.2rem;
+  letter-spacing: -0.01em;
+}
+
+.section-desc {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  max-width: 560px;
+  line-height: 1.9;
+  font-weight: 300;
+}
+
+/* ── Reveal animation ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(36px);
+  transition: opacity 0.9s var(--ease-out), transform 0.9s var(--ease-out);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Nav ── */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 1.2rem 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.4s, box-shadow 0.4s, backdrop-filter 0.4s;
+}
+nav.scrolled {
+  background: hsla(40, 30%, 97%, 0.85);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow: 0 1px 0 var(--border);
+}
+.nav-logo {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+.nav-logo span { color: var(--accent); }
+.nav-links { display: flex; align-items: center; gap: 2.5rem; }
+.nav-links a {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  transition: color 0.3s;
+}
+.nav-links a:hover { color: var(--accent); }
+
+/* ══════════════════════════════════════════
+   HERO
+   ══════════════════════════════════════════ */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 8rem 2rem 4rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.hero-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(1.05) saturate(0.9);
+  animation: heroSlow 25s ease-in-out infinite alternate;
+}
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, hsla(40,30%,97%,0.55) 0%, hsla(40,30%,97%,0.2) 40%, hsla(40,30%,97%,0.3) 70%, hsla(40,30%,97%,0.95) 100%),
+    radial-gradient(ellipse at 50% 30%, hsla(32,85%,52%,0.06) 0%, transparent 70%);
+}
+
+@keyframes heroSlow { from { transform: scale(1); } to { transform: scale(1.08); } }
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 800px;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1.2rem;
+  border-radius: 100px;
+  background: hsla(32, 85%, 52%, 0.1);
+  border: 1px solid hsla(32, 85%, 52%, 0.2);
+  font-size: 0.78rem;
+  color: var(--accent-deep);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  margin-bottom: 2rem;
+}
+.hero-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsla(32,85%,52%,0.4); }
+  50% { box-shadow: 0 0 0 6px hsla(32,85%,52%,0); }
+}
+
+.hero h1 {
+  font-size: clamp(2.8rem, 7vw, 5.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 0.3rem;
+  color: var(--text);
+}
+.hero h1 .en {
+  display: block;
+  font-size: clamp(0.9rem, 1.8vw, 1.2rem);
+  font-weight: 400;
+  letter-spacing: 0.25em;
+  color: var(--accent);
+  margin-top: 0.8rem;
+  font-family: var(--font-body);
+  text-transform: uppercase;
+}
+
+.hero-subtitle {
+  font-family: var(--font-serif);
+  font-size: clamp(1.1rem, 2vw, 1.35rem);
+  color: var(--text-secondary);
+  margin-top: 1.5rem;
+  font-weight: 300;
+  letter-spacing: 0.08em;
+}
+
+.hero-scroll {
+  position: absolute;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  animation: scrollBounce 2.5s ease-in-out infinite;
+}
+.hero-scroll .line {
+  width: 1px;
+  height: 28px;
+  background: linear-gradient(to bottom, var(--accent), transparent);
+}
+@keyframes scrollBounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(8px); }
+}
+
+/* ── Floating orbs ── */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.15;
+  z-index: 1;
+  animation: orbFloat 15s ease-in-out infinite alternate;
+}
+.orb-1 { width: 300px; height: 300px; background: var(--accent-gold); top: 10%; left: -5%; animation-delay: 0s; }
+.orb-2 { width: 200px; height: 200px; background: var(--accent-warm); bottom: 20%; right: -3%; animation-delay: -5s; }
+.orb-3 { width: 150px; height: 150px; background: hsl(200,60%,70%); top: 50%; right: 20%; animation-delay: -10s; opacity: 0.08; }
+@keyframes orbFloat {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(20px, -15px); }
+  66% { transform: translate(-10px, 10px); }
+  100% { transform: translate(15px, -20px); }
+}
+
+/* ══════════════════════════════════════════
+   VIDEO SHOWCASE
+   ══════════════════════════════════════════ */
+.showcase {
+  padding: 2rem 2rem 6rem;
+  max-width: 1100px;
+  margin: -6rem auto 0;
+  position: relative;
+  z-index: 3;
+}
+
+.video-frame {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 25px 80px hsla(20,30%,15%,0.12), 0 8px 24px hsla(20,30%,15%,0.08);
+  border: 1px solid hsla(38,20%,85%,0.6);
+  background: var(--bg-card);
+}
+.video-frame video {
+  width: 100%;
+  display: block;
+  border-radius: 15px;
+}
+.video-caption {
+  text-align: center;
+  padding: 1.2rem 0 0;
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 300;
+  letter-spacing: 0.03em;
+}
+
+/* ══════════════════════════════════════════
+   STORY
+   ══════════════════════════════════════════ */
+.story {
+  padding: 7rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.story-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+}
+.story-grid.reverse { direction: rtl; }
+.story-grid.reverse > * { direction: ltr; }
+
+.story-text { max-width: 480px; }
+.story-text .quote {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 600;
+  font-style: italic;
+  color: var(--text);
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+  position: relative;
+  padding-left: 1.5rem;
+  border-left: 3px solid var(--accent-gold);
+}
+.story-text p {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  color: var(--text-secondary);
+  line-height: 2;
+  font-weight: 300;
+}
+.story-text p + p { margin-top: 1rem; }
+
+.story-image {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px hsla(20,20%,10%,0.08);
+  position: relative;
+}
+.story-image img {
+  width: 100%;
+  display: block;
+  transition: transform 6s var(--ease-out);
+}
+.story-image:hover img { transform: scale(1.03); }
+.story-image .img-tag {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  background: hsla(0,0%,100%,0.85);
+  backdrop-filter: blur(10px);
+  padding: 0.4rem 1rem;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+}
+
+/* ── Divider ── */
+.divider {
+  max-width: 1100px;
+  margin: 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+}
+
+/* ══════════════════════════════════════════
+   BEFORE / AFTER
+   ══════════════════════════════════════════ */
+.comparison {
+  padding: 7rem 2rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.ba-container {
+  position: relative;
+  max-width: 800px;
+  margin: 3rem auto 0;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: col-resize;
+  box-shadow: 0 20px 60px hsla(20,20%,10%,0.1);
+  touch-action: none;
+  user-select: none;
+}
+.ba-container img {
+  width: 100%;
+  display: block;
+}
+.ba-before { position: relative; }
+.ba-after {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0 50% 0 0);
+}
+.ba-slider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 3px;
+  background: white;
+  z-index: 5;
+  box-shadow: 0 0 12px hsla(0,0%,0%,0.2);
+  transform: translateX(-50%);
+}
+.ba-slider::before {
+  content: '◄ ►';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.15em;
+  box-shadow: 0 2px 12px hsla(0,0%,0%,0.15);
+}
+.ba-label {
+  position: absolute;
+  bottom: 1rem;
+  padding: 0.35rem 1rem;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  z-index: 4;
+  pointer-events: none;
+}
+.ba-label.before { left: 1rem; background: hsla(0,0%,100%,0.85); backdrop-filter: blur(8px); color: var(--text-secondary); }
+.ba-label.after { right: 1rem; background: hsla(32,85%,52%,0.9); color: white; }
+
+/* ══════════════════════════════════════════
+   PIPELINE
+   ══════════════════════════════════════════ */
+.pipeline {
+  padding: 7rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.pipe-flow {
+  display: flex;
+  gap: 0;
+  margin-top: 3rem;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+}
+
+.pipe-step {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.pipe-node {
+  width: 180px;
+  text-align: center;
+}
+.pipe-img-wrap {
+  width: 160px;
+  height: 120px;
+  margin: 0 auto 0.8rem;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  box-shadow: 0 4px 16px hsla(20,20%,10%,0.06);
+  transition: transform 0.4s var(--ease-out), box-shadow 0.4s var(--ease-out);
+}
+.pipe-img-wrap:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 28px hsla(20,20%,10%,0.12);
+}
+.pipe-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pipe-img-wrap.checkerboard {
+  background:
+    conic-gradient(hsl(0,0%,90%) 0.25turn, hsl(0,0%,100%) 0.25turn 0.5turn,
+                   hsl(0,0%,90%) 0.5turn 0.75turn, hsl(0,0%,100%) 0.75turn)
+    top left / 12px 12px repeat;
+}
+.pipe-label {
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+  line-height: 1.5;
+}
+.pipe-label strong {
+  display: block;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.72rem;
+  color: var(--accent-deep);
+  letter-spacing: 0.04em;
+  margin-bottom: 0.15rem;
+  text-transform: uppercase;
+}
+
+.pipe-arrow {
+  display: flex;
+  align-items: center;
+  padding-top: 3rem;
+  color: var(--accent);
+  font-size: 1.2rem;
+  margin: 0 0.3rem;
+  flex-shrink: 0;
+}
+
+/* AI analysis card */
+.pipe-analysis {
+  width: 180px;
+  padding: 0.8rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-size: 0.72rem;
+  text-align: left;
+  margin: 0 auto 0.8rem;
+  box-shadow: 0 4px 16px hsla(20,20%,10%,0.06);
+  height: 120px;
+  overflow: hidden;
+}
+.pipe-analysis .a-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.15rem 0;
+  border-bottom: 1px solid hsla(38,20%,85%,0.5);
+}
+.pipe-analysis .a-row:last-child { border-bottom: none; }
+.pipe-analysis .a-key { color: var(--text-muted); font-weight: 400; }
+.pipe-analysis .a-val { color: var(--text); font-weight: 500; }
+
+/* Frame scores */
+.pipe-frames {
+  width: 180px;
+  margin: 0 auto 0.8rem;
+}
+.pipe-frames .f-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+.pipe-frames .f-thumb {
+  width: 36px;
+  height: 24px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.pipe-frames .f-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pipe-frames .f-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--surface);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.pipe-frames .f-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-gold), var(--accent));
+  border-radius: 3px;
+}
+.pipe-frames .f-score {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════
+   TRY IT — Upload Interface
+   ══════════════════════════════════════════ */
+.try-it {
+  padding: 7rem 2rem;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-warm) 100%);
+  text-align: center;
+}
+.try-inner {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.upload-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  padding: 3rem 2rem;
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: border-color 0.3s, background 0.3s, transform 0.3s var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+.upload-zone:hover {
+  border-color: var(--accent);
+  background: hsla(32,85%,52%,0.03);
+  transform: translateY(-2px);
+}
+.upload-zone.has-file {
+  border-style: solid;
+  border-color: var(--accent-gold);
+}
+.upload-zone .uz-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+.upload-zone h3 {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.upload-zone p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 300;
+}
+.upload-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.upload-zone .preview {
+  display: none;
+  margin-top: 1rem;
+}
+.upload-zone .preview img,
+.upload-zone .preview video {
+  max-width: 100%;
+  max-height: 160px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.upload-zone .file-name {
+  display: none;
+  font-size: 0.78rem;
+  color: var(--accent-deep);
+  font-weight: 500;
+  margin-top: 0.8rem;
+  word-break: break-all;
+}
+
+.config-bar {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+.config-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+.config-item label {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+.config-item select {
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.3s;
+}
+.config-item select:focus { border-color: var(--accent); }
+
+.btn-generate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 2rem;
+  padding: 0.9rem 2.5rem;
+  border: none;
+  border-radius: 100px;
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent));
+  color: white;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.3s var(--ease-out), box-shadow 0.3s;
+  letter-spacing: 0.04em;
+}
+.btn-generate:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px hsla(32,85%,52%,0.3);
+}
+.btn-generate:active { transform: translateY(0); }
+.btn-generate:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Progress simulation */
+.gen-progress {
+  display: none;
+  max-width: 500px;
+  margin: 2rem auto 0;
+  text-align: left;
+}
+.gen-progress.active { display: block; }
+.prog-bar-outer {
+  width: 100%;
+  height: 6px;
+  background: var(--surface);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+.prog-bar-inner {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent-gold), var(--accent));
+  border-radius: 3px;
+  transition: width 0.5s var(--ease-out);
+}
+.prog-steps {
+  list-style: none;
+}
+.prog-steps li {
+  padding: 0.35rem 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: color 0.3s;
+}
+.prog-steps li.done { color: var(--accent-deep); }
+.prog-steps li.active { color: var(--text); font-weight: 500; }
+.prog-steps li::before {
+  content: '○';
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+.prog-steps li.done::before { content: '●'; color: var(--accent); }
+.prog-steps li.active::before { content: '◉'; color: var(--accent); }
+
+.gen-result {
+  display: none;
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border-radius: 16px;
+  border: 1px solid var(--accent-gold);
+  background: hsla(42,78%,58%,0.05);
+}
+.gen-result.active { display: block; }
+.gen-result p {
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+/* ══════════════════════════════════════════
+   HOW IT WORKS
+   ══════════════════════════════════════════ */
+.process {
+  padding: 7rem 2rem;
+  background: var(--bg-warm);
+  text-align: center;
+}
+.process-inner { max-width: 1100px; margin: 0 auto; }
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin-top: 3.5rem;
+  position: relative;
+}
+/* Connecting line */
+.steps::before {
+  content: '';
+  position: absolute;
+  top: 3.5rem;
+  left: 16%;
+  right: 16%;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent-gold), var(--accent), var(--accent-warm));
+  opacity: 0.3;
+  z-index: 0;
+}
+
+.step-card {
+  position: relative;
+  z-index: 1;
+  padding: 2.5rem 2rem;
+  background: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  transition: transform 0.5s var(--ease-out), box-shadow 0.5s var(--ease-out);
+}
+.step-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px hsla(20,20%,10%,0.08);
+}
+.step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent));
+  color: white;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+}
+.step-icon {
+  font-size: 2.2rem;
+  margin-bottom: 0.8rem;
+}
+.step-card h3 {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+}
+.step-card p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  font-weight: 300;
+}
+
+/* ══════════════════════════════════════════
+   STYLES GALLERY
+   ══════════════════════════════════════════ */
+.styles {
+  padding: 7rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.style-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.2rem;
+  margin-top: 3rem;
+}
+
+.style-card {
+  position: relative;
+  padding: 1.8rem 1.2rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  overflow: hidden;
+  transition: transform 0.5s var(--ease-out), box-shadow 0.5s var(--ease-out);
+  cursor: default;
+}
+.style-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 36px hsla(20,20%,10%,0.06);
+}
+.style-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+.style-card[data-style="cinematic"]::before { background: linear-gradient(90deg, hsl(32,60%,45%), hsl(42,70%,55%)); }
+.style-card[data-style="dreamy"]::before   { background: linear-gradient(90deg, hsl(280,40%,70%), hsl(320,50%,75%)); }
+.style-card[data-style="epic"]::before     { background: linear-gradient(90deg, hsl(220,50%,35%), hsl(200,60%,50%)); }
+.style-card[data-style="warm"]::before     { background: linear-gradient(90deg, hsl(18,70%,55%), hsl(38,80%,60%)); }
+.style-card[data-style="noir"]::before     { background: linear-gradient(90deg, hsl(0,0%,15%), hsl(0,0%,35%)); }
+.style-card[data-style="vintage"]::before  { background: linear-gradient(90deg, hsl(30,40%,50%), hsl(45,50%,60%)); }
+.style-card[data-style="anime"]::before    { background: linear-gradient(90deg, hsl(340,70%,60%), hsl(280,60%,65%)); }
+
+.style-name {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  text-transform: capitalize;
+}
+.style-zh {
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
+  color: var(--accent);
+  font-weight: 500;
+  margin-bottom: 0.7rem;
+}
+.style-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  font-weight: 300;
+}
+.style-colors {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+.style-colors span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid hsla(0,0%,100%,0.8);
+  box-shadow: 0 1px 4px hsla(0,0%,0%,0.1);
+}
+
+/* ══════════════════════════════════════════
+   TECH STRIP
+   ══════════════════════════════════════════ */
+.tech {
+  padding: 4rem 2rem;
+  background: var(--bg-warm);
+  text-align: center;
+}
+.tech-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+}
+.tech-tag {
+  padding: 0.5rem 1.2rem;
+  border-radius: 100px;
+  font-size: 0.78rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+/* ══════════════════════════════════════════
+   FOOTER
+   ══════════════════════════════════════════ */
+footer {
+  padding: 3rem 2rem;
+  text-align: center;
+  border-top: 1px solid var(--border);
+}
+footer p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 300;
+}
+footer .foot-logo {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+footer .foot-logo span { color: var(--accent); }
+
+/* ══════════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════════ */
+@media (max-width: 900px) {
+  nav { padding: 1rem 1.5rem; }
+  .nav-links a:not(:last-child) { display: none; }
+  .story-grid, .story-grid.reverse { grid-template-columns: 1fr; gap: 2rem; }
+  .story-grid.reverse { direction: ltr; }
+  .steps { grid-template-columns: 1fr; }
+  .steps::before { display: none; }
+  .style-grid { grid-template-columns: repeat(2, 1fr); }
+  .upload-grid { grid-template-columns: 1fr; }
+  .pipe-flow { flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
+  .pipe-arrow { padding-top: 0; transform: rotate(90deg); margin: 0.5rem 0; }
+}
+
+@media (max-width: 600px) {
+  .hero h1 { font-size: 2.5rem; }
+  .style-grid { grid-template-columns: 1fr; }
+  .hero { padding: 6rem 1.5rem 3rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ NAV ══ -->
+<nav>
+  <a href="#" class="nav-logo">时空<span>融影</span></a>
+  <div class="nav-links">
+    <a href="#story">故事</a>
+    <a href="#gallery">效果</a>
+    <a href="#pipeline">流程</a>
+    <a href="#try">体验</a>
+    <a href="#styles">风格</a>
+  </div>
+</nav>
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+  <div class="hero-bg">
+    <img src="assets/timeslice-hero.png" alt="壮美风景">
+  </div>
+  <div class="hero-overlay"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <div class="hero-content reveal">
+    <div class="hero-badge">AI CINEMATIC FUSION</div>
+    <h1>
+      时空融影
+      <span class="en">TimeSlice Fusion</span>
+    </h1>
+    <p class="hero-subtitle">「 每一帧风景，都值得有你 」</p>
+  </div>
+
+  <div class="hero-scroll">
+    <div class="line"></div>
+    SCROLL
+  </div>
+</section>
+
+<!-- ══ VIDEO SHOWCASE ══ -->
+<section class="showcase reveal">
+  <div class="video-frame">
+    <video src="assets/timeslice_orbit_test.mp4" autoplay muted loop playsinline></video>
+  </div>
+  <p class="video-caption">AI 生成 · 镜头环绕 180° · cinematic 风格</p>
+</section>
+
+<!-- ══ STORY ══ -->
+<section id="story" class="story">
+  <div class="story-grid reveal">
+    <div class="story-text">
+      <div class="section-label">The Story</div>
+      <div class="quote">"站在世界最美的地方，却只能拍一张自拍。"</div>
+      <p>每个旅行者都有过这样的遗憾——当你独自站在雪山之巅、湖畔晨曦、古城黄昏前，手中的相机只能选择：拍风景，或拍自己。</p>
+      <p>你从来没能真正「走进」那片风景。</p>
+    </div>
+    <div class="story-image">
+      <img src="assets/timeslice-story.png" alt="旅行遗憾" loading="lazy">
+      <span class="img-tag">360° 全景 · AI 融合</span>
+    </div>
+  </div>
+
+  <div style="height:5rem"></div>
+
+  <div class="story-grid reverse reveal">
+    <div class="story-text">
+      <div class="section-label">The Solution</div>
+      <div class="quote">"现在，AI 帮你走进每一帧风景。"</div>
+      <p>时空融影将你的自拍照与 360° 全景视频融合，通过 AI 人像抠图、智能场景分析、光影适配和电影级动画生成，创造出一段你「真实站在风景中」的短视频。</p>
+      <p>不是 P 图，不是合成感的贴纸——而是一段有风吹过发梢、有镜头缓缓环绕的电影级画面。</p>
+    </div>
+    <div class="story-image">
+      <img src="assets/timeslice-hero.png" alt="AI融合效果" loading="lazy">
+      <span class="img-tag">电影级画质 · 自然融合</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ══ BEFORE / AFTER ══ -->
+<section id="gallery" class="comparison">
+  <div class="reveal">
+    <div class="section-label">Before & After</div>
+    <div class="section-title" style="margin:0 auto;">一帧之间的魔法</div>
+    <div class="section-desc" style="margin:1rem auto 0;">左侧是原始风景帧，右侧是 AI 融合后的效果。拖动滑块感受「人景合一」的瞬间。</div>
+  </div>
+
+  <div class="ba-container reveal" id="baContainer">
+    <div class="ba-before">
+      <img src="assets/timeslice-before.png" alt="融合前">
+    </div>
+    <div class="ba-after" id="baAfter">
+      <img src="assets/timeslice-after.png" alt="融合后">
+    </div>
+    <div class="ba-slider" id="baSlider"></div>
+    <span class="ba-label before">原始风景</span>
+    <span class="ba-label after">AI 融合</span>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ══ PIPELINE — Real Processing Showcase ══ -->
+<section id="pipeline" class="pipeline">
+  <div class="reveal" style="text-align:center">
+    <div class="section-label">Pipeline</div>
+    <div class="section-title">AI 处理全流程</div>
+    <div class="section-desc" style="margin:0 auto;">从一张自拍和一段视频开始，经过 6 步 AI 处理，生成电影级融合视频。以下是一次真实处理的中间产物。</div>
+  </div>
+
+  <div class="pipe-flow reveal">
+    <!-- Step 1: Selfie -->
+    <div class="pipe-step">
+      <div class="pipe-node">
+        <div class="pipe-img-wrap">
+          <img src="assets/timeslice-selfie.png" alt="原始自拍">
+        </div>
+        <div class="pipe-label">
+          <strong>Step 1</strong>
+          原始自拍照
+        </div>
+      </div>
+      <div class="pipe-arrow">→</div>
+    </div>
+
+    <!-- Step 2: Cutout -->
+    <div class="pipe-step">
+      <div class="pipe-node">
+        <div class="pipe-img-wrap checkerboard">
+          <img src="assets/timeslice-cutout.png" alt="人像抠图">
+        </div>
+        <div class="pipe-label">
+          <strong>Step 2</strong>
+          macOS Vision 抠图
+        </div>
+      </div>
+      <div class="pipe-arrow">→</div>
+    </div>
+
+    <!-- Step 3: Frame Selection -->
+    <div class="pipe-step">
+      <div class="pipe-node">
+        <div class="pipe-frames" style="margin-top:0">
+          <div class="f-row">
+            <div class="f-thumb"><img src="assets/timeslice-best-frame.jpg" alt=""></div>
+            <div class="f-bar"><div class="f-fill" style="width:78%"></div></div>
+            <div class="f-score">78</div>
+          </div>
+          <div class="f-row">
+            <div class="f-thumb"><img src="assets/timeslice-frame-00.jpg" alt=""></div>
+            <div class="f-bar"><div class="f-fill" style="width:68%"></div></div>
+            <div class="f-score">68</div>
+          </div>
+          <div class="f-row">
+            <div class="f-thumb"><img src="assets/timeslice-frame-02.jpg" alt=""></div>
+            <div class="f-bar"><div class="f-fill" style="width:65%"></div></div>
+            <div class="f-score">65</div>
+          </div>
+          <div class="f-row">
+            <div class="f-thumb"><img src="assets/timeslice-frame-04.jpg" alt=""></div>
+            <div class="f-bar"><div class="f-fill" style="width:65%"></div></div>
+            <div class="f-score">65</div>
+          </div>
+        </div>
+        <div class="pipe-label">
+          <strong>Step 3</strong>
+          AI 选帧 (Qwen-VL)
+        </div>
+      </div>
+      <div class="pipe-arrow">→</div>
+    </div>
+
+    <!-- Step 4: Scene Analysis -->
+    <div class="pipe-step">
+      <div class="pipe-node">
+        <div class="pipe-analysis">
+          <div class="a-row"><span class="a-key">场景</span><span class="a-val">花园</span></div>
+          <div class="a-row"><span class="a-key">时段</span><span class="a-val">阴天柔光</span></div>
+          <div class="a-row"><span class="a-key">氛围</span><span class="a-val">宁静平和</span></div>
+          <div class="a-row"><span class="a-key">主色</span><span class="a-val">绿 · 灰 · 棕</span></div>
+          <div class="a-row"><span class="a-key">景深</span><span class="a-val">草地→树丛→森林</span></div>
+          <div class="a-row"><span class="a-key">人物</span><span class="a-val">白色露肩上衣</span></div>
+        </div>
+        <div class="pipe-label">
+          <strong>Step 4</strong>
+          场景 + 人物分析
+        </div>
+      </div>
+      <div class="pipe-arrow">→</div>
+    </div>
+
+    <!-- Step 5: Composite -->
+    <div class="pipe-step">
+      <div class="pipe-node">
+        <div class="pipe-img-wrap">
+          <img src="assets/timeslice-composite.jpg" alt="合成图">
+        </div>
+        <div class="pipe-label">
+          <strong>Step 5</strong>
+          人景合成 (光影适配)
+        </div>
+      </div>
+      <div class="pipe-arrow">→</div>
+    </div>
+
+    <!-- Step 6: Final Video -->
+    <div class="pipe-step">
+      <div class="pipe-node">
+        <div class="pipe-img-wrap" style="border-color:var(--accent-gold)">
+          <video src="assets/timeslice_orbit_test.mp4" autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover"></video>
+        </div>
+        <div class="pipe-label">
+          <strong>Step 6</strong>
+          I2V 视频生成
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ══ TRY IT — Interactive Upload ══ -->
+<section id="try" class="try-it">
+  <div class="try-inner">
+    <div class="reveal">
+      <div class="section-label">Try It</div>
+      <div class="section-title">亲自体验</div>
+      <div class="section-desc" style="margin:0 auto;">上传你的 360° 全景视频和自拍照，选择喜欢的风格，一键生成。</div>
+    </div>
+
+    <div class="upload-grid reveal">
+      <div class="upload-zone" id="videoZone">
+        <div class="uz-icon">🎥</div>
+        <h3>360° 全景视频</h3>
+        <p>点击或拖拽上传 .mp4 文件</p>
+        <input type="file" accept="video/*" id="videoInput">
+        <div class="preview" id="videoPreview"></div>
+        <div class="file-name" id="videoName"></div>
+      </div>
+      <div class="upload-zone" id="selfieZone">
+        <div class="uz-icon">🤳</div>
+        <h3>自拍照片</h3>
+        <p>点击或拖拽上传 .jpg / .png 文件</p>
+        <input type="file" accept="image/*" id="selfieInput">
+        <div class="preview" id="selfiePreview"></div>
+        <div class="file-name" id="selfieName"></div>
+      </div>
+    </div>
+
+    <div class="config-bar reveal">
+      <div class="config-item">
+        <label>风格</label>
+        <select id="styleSelect">
+          <option value="cinematic">Cinematic 史诗电影</option>
+          <option value="dreamy">Dreamy 梦幻柔光</option>
+          <option value="epic">Epic 壮阔史诗</option>
+          <option value="warm">Warm 温馨暖光</option>
+          <option value="noir">Noir 黑色电影</option>
+          <option value="vintage">Vintage 复古胶片</option>
+          <option value="anime">Anime 动漫风</option>
+        </select>
+      </div>
+      <div class="config-item">
+        <label>合成</label>
+        <select id="compositeSelect">
+          <option value="natural">自然融合</option>
+          <option value="collage">艺术拼贴</option>
+        </select>
+      </div>
+      <div class="config-item">
+        <label>时长</label>
+        <select id="durationSelect">
+          <option value="5">5 秒</option>
+          <option value="3">3 秒</option>
+          <option value="8">8 秒</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn-generate reveal" id="btnGenerate" disabled>
+      <span>开始生成</span>
+    </button>
+
+    <div class="gen-progress" id="genProgress">
+      <div class="prog-bar-outer">
+        <div class="prog-bar-inner" id="progBar"></div>
+      </div>
+      <ul class="prog-steps" id="progSteps">
+        <li data-step="0">人像抠图 (macOS Vision)</li>
+        <li data-step="1">提取候选帧</li>
+        <li data-step="2">AI 选帧 (Qwen-VL)</li>
+        <li data-step="3">场景 + 人物分析</li>
+        <li data-step="4">人景合成</li>
+        <li data-step="5">I2V 视频生成</li>
+      </ul>
+    </div>
+
+    <div class="gen-result" id="genResult">
+      <p>生成完成！在实际部署中，视频将自动下载。当前为前端演示模式。</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ══ HOW IT WORKS ══ -->
+<section id="process" class="process">
+  <div class="process-inner">
+    <div class="reveal">
+      <div class="section-label">How It Works</div>
+      <div class="section-title">三步，走进风景</div>
+      <div class="section-desc" style="margin:0 auto;">无需专业设备，无需后期技能。只需一段 360° 视频和一张自拍。</div>
+    </div>
+
+    <div class="steps">
+      <div class="step-card reveal" style="transition-delay:0.1s">
+        <div class="step-num">1</div>
+        <div class="step-icon">🎥</div>
+        <h3>上传 360° 视频</h3>
+        <p>来自全景相机的风景视频，AI 自动提取最佳角度与构图</p>
+      </div>
+      <div class="step-card reveal" style="transition-delay:0.2s">
+        <div class="step-num">2</div>
+        <div class="step-icon">🤳</div>
+        <h3>上传自拍照片</h3>
+        <p>一张普通自拍即可，AI 精准抠图并适配场景光影</p>
+      </div>
+      <div class="step-card reveal" style="transition-delay:0.3s">
+        <div class="step-num">3</div>
+        <div class="step-icon">✨</div>
+        <h3>AI 生成视频</h3>
+        <p>I2V 引擎动画化，镜头缓缓环绕，风吹发梢，电影感拉满</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ STYLES ══ -->
+<section id="styles" class="styles">
+  <div class="reveal">
+    <div class="section-label">Style Presets</div>
+    <div class="section-title">七种风格，七种情绪</div>
+    <div class="section-desc" style="margin:0 auto;">每种风格都经过精心调校——从镜头运动、光影氛围到色彩基调，赋予每一帧独特的电影气质。</div>
+  </div>
+
+  <div class="style-grid">
+    <div class="style-card reveal" data-style="cinematic" style="transition-delay:0.05s">
+      <div class="style-name">Cinematic</div>
+      <div class="style-zh">史诗电影</div>
+      <div class="style-desc">缓慢推轨，浅景深，自然光与柔和阴影</div>
+      <div class="style-colors">
+        <span style="background:hsl(32,60%,45%)"></span>
+        <span style="background:hsl(42,70%,55%)"></span>
+        <span style="background:hsl(20,15%,25%)"></span>
+      </div>
+    </div>
+    <div class="style-card reveal" data-style="dreamy" style="transition-delay:0.1s">
+      <div class="style-name">Dreamy</div>
+      <div class="style-zh">梦幻柔光</div>
+      <div class="style-desc">轻微漂浮，柔焦边缘，朦胧散射光</div>
+      <div class="style-colors">
+        <span style="background:hsl(280,40%,70%)"></span>
+        <span style="background:hsl(320,50%,75%)"></span>
+        <span style="background:hsl(260,30%,85%)"></span>
+      </div>
+    </div>
+    <div class="style-card reveal" data-style="epic" style="transition-delay:0.15s">
+      <div class="style-name">Epic</div>
+      <div class="style-zh">壮阔史诗</div>
+      <div class="style-desc">大广角低角度仰拍，戏剧性光影对比</div>
+      <div class="style-colors">
+        <span style="background:hsl(220,50%,35%)"></span>
+        <span style="background:hsl(200,60%,50%)"></span>
+        <span style="background:hsl(210,40%,65%)"></span>
+      </div>
+    </div>
+    <div class="style-card reveal" data-style="warm" style="transition-delay:0.2s">
+      <div class="style-name">Warm</div>
+      <div class="style-zh">温馨暖光</div>
+      <div class="style-desc">中景手持感，暖色温逆光，温柔氛围</div>
+      <div class="style-colors">
+        <span style="background:hsl(18,70%,55%)"></span>
+        <span style="background:hsl(38,80%,60%)"></span>
+        <span style="background:hsl(28,65%,70%)"></span>
+      </div>
+    </div>
+    <div class="style-card reveal" data-style="noir" style="transition-delay:0.25s">
+      <div class="style-name">Noir</div>
+      <div class="style-zh">黑色电影</div>
+      <div class="style-desc">高对比荷兰角，单光源深影，悬疑质感</div>
+      <div class="style-colors">
+        <span style="background:hsl(0,0%,15%)"></span>
+        <span style="background:hsl(0,0%,35%)"></span>
+        <span style="background:hsl(0,0%,55%)"></span>
+      </div>
+    </div>
+    <div class="style-card reveal" data-style="vintage" style="transition-delay:0.3s">
+      <div class="style-name">Vintage</div>
+      <div class="style-zh">复古胶片</div>
+      <div class="style-desc">暗角与暖色胶片颗粒，钨丝灯过曝感</div>
+      <div class="style-colors">
+        <span style="background:hsl(30,40%,50%)"></span>
+        <span style="background:hsl(45,50%,60%)"></span>
+        <span style="background:hsl(35,35%,70%)"></span>
+      </div>
+    </div>
+    <div class="style-card reveal" data-style="anime" style="transition-delay:0.35s">
+      <div class="style-name">Anime</div>
+      <div class="style-zh">动漫二次元</div>
+      <div class="style-desc">赛璐珞渲染，明亮天空，光芒与闪耀</div>
+      <div class="style-colors">
+        <span style="background:hsl(340,70%,60%)"></span>
+        <span style="background:hsl(280,60%,65%)"></span>
+        <span style="background:hsl(200,70%,65%)"></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ══ TECH ══ -->
+<section class="tech">
+  <div class="reveal">
+    <div class="section-label">Powered By</div>
+    <div class="section-title">技术栈</div>
+  </div>
+  <div class="tech-tags reveal">
+    <span class="tech-tag">Qwen-VL 视觉分析</span>
+    <span class="tech-tag">Wan2.6 I2V 视频生成</span>
+    <span class="tech-tag">macOS Vision 人像抠图</span>
+    <span class="tech-tag">FFmpeg 视频处理</span>
+    <span class="tech-tag">360° Equirectangular</span>
+    <span class="tech-tag">光影自适应合成</span>
+    <span class="tech-tag">7 种电影风格预设</span>
+  </div>
+</section>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <div class="foot-logo">时空<span>融影</span></div>
+  <p>TimeSlice Fusion v3 · Built with AI · 每一帧风景，都值得有你</p>
+</footer>
+
+<script>
+/* ── Scroll reveal ── */
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+/* ── Nav scroll effect ── */
+const nav = document.querySelector('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 60);
+}, { passive: true });
+
+/* ── Before/After slider ── */
+const baCont = document.getElementById('baContainer');
+const baAfter = document.getElementById('baAfter');
+const baSlider = document.getElementById('baSlider');
+let dragging = false;
+
+function updateBA(x) {
+  const rect = baCont.getBoundingClientRect();
+  let pct = ((x - rect.left) / rect.width) * 100;
+  pct = Math.max(2, Math.min(98, pct));
+  baAfter.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
+  baSlider.style.left = pct + '%';
+}
+
+baCont.addEventListener('mousedown', (e) => { dragging = true; updateBA(e.clientX); });
+window.addEventListener('mousemove', (e) => { if (dragging) updateBA(e.clientX); });
+window.addEventListener('mouseup', () => { dragging = false; });
+baCont.addEventListener('touchstart', (e) => { dragging = true; updateBA(e.touches[0].clientX); }, { passive: true });
+window.addEventListener('touchmove', (e) => { if (dragging) updateBA(e.touches[0].clientX); }, { passive: true });
+window.addEventListener('touchend', () => { dragging = false; });
+
+/* ── Trigger hero reveal immediately ── */
+document.querySelector('.hero .reveal')?.classList.add('visible');
+
+/* ── Upload preview ── */
+function setupUpload(inputId, zoneId, previewId, nameId, type) {
+  const input = document.getElementById(inputId);
+  const zone = document.getElementById(zoneId);
+  const preview = document.getElementById(previewId);
+  const nameEl = document.getElementById(nameId);
+  input.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    zone.classList.add('has-file');
+    nameEl.textContent = file.name;
+    nameEl.style.display = 'block';
+    preview.innerHTML = '';
+    if (type === 'image') {
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(file);
+      preview.appendChild(img);
+    } else {
+      const vid = document.createElement('video');
+      vid.src = URL.createObjectURL(file);
+      vid.muted = true;
+      vid.autoplay = true;
+      vid.loop = true;
+      vid.playsInline = true;
+      preview.appendChild(vid);
+    }
+    preview.style.display = 'block';
+    checkReady();
+  });
+}
+setupUpload('videoInput', 'videoZone', 'videoPreview', 'videoName', 'video');
+setupUpload('selfieInput', 'selfieZone', 'selfiePreview', 'selfieName', 'image');
+
+function checkReady() {
+  const v = document.getElementById('videoInput').files.length > 0;
+  const s = document.getElementById('selfieInput').files.length > 0;
+  document.getElementById('btnGenerate').disabled = !(v && s);
+}
+
+/* ── Generate button — progress simulation ── */
+document.getElementById('btnGenerate').addEventListener('click', () => {
+  const prog = document.getElementById('genProgress');
+  const bar = document.getElementById('progBar');
+  const steps = document.querySelectorAll('#progSteps li');
+  const result = document.getElementById('genResult');
+  const btn = document.getElementById('btnGenerate');
+
+  prog.classList.add('active');
+  result.classList.remove('active');
+  btn.disabled = true;
+  btn.querySelector('span').textContent = '生成中...';
+
+  const delays = [800, 1500, 3000, 4500, 5500, 7000];
+  const pcts = [10, 25, 45, 65, 80, 100];
+
+  steps.forEach(s => { s.className = ''; });
+
+  delays.forEach((d, i) => {
+    setTimeout(() => {
+      bar.style.width = pcts[i] + '%';
+      steps.forEach((s, j) => {
+        if (j < i) s.className = 'done';
+        else if (j === i) s.className = 'active';
+        else s.className = '';
+      });
+    }, d);
+  });
+
+  setTimeout(() => {
+    steps.forEach(s => { s.className = 'done'; });
+    result.classList.add('active');
+    btn.querySelector('span').textContent = '重新生成';
+    btn.disabled = false;
+  }, 8000);
+});
+</script>
+</body>
+</html>

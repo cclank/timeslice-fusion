@@ -1,0 +1,43 @@
+# === Secrets & API Keys ===
+.env
+.env.*
+*.key
+api_key.txt
+**/api_key*
+**/credentials*
+**/secret*
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.egg
+
+# === macOS ===
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+*.swp
+
+# === IDE ===
+.vscode/
+.idea/
+*.sublime-*
+
+# === Temp & Generated Outputs ===
+scripts/test_*/
+scripts/tmp*/
+*.tmp
+*.log
+
+# === Large generated files (keep web demo assets) ===
+# User-generated outputs go in their own output dirs
+output/
+outputs/
+*_output/
