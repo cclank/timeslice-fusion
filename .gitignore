@@ -33,6 +33,8 @@ venv/
 # === Temp & Generated Outputs ===
 scripts/test_*/
 scripts/tmp*/
+tasks/
+ts_task_*/
 *.tmp
 *.log
 

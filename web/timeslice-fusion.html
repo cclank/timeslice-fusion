@@ -810,6 +810,45 @@ nav.scrolled {
   font-size: 0.95rem;
   color: var(--text-secondary);
 }
+.gen-result video {
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+.btn-download {
+  display: inline-block;
+  padding: 0.6rem 1.5rem;
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent));
+  color: hsl(0, 0%, 100%);
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-top: 0.5rem;
+  transition: opacity 0.2s;
+}
+.btn-download:hover { opacity: 0.85; }
+.intermediates-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+.intermediate-item { text-align: center; }
+.intermediate-item img {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.intermediate-item img:hover { transform: scale(1.03); }
+.intermediate-item span {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+}
 
 /* ══════════════════════════════════════════
    HOW IT WORKS
@@ -1336,9 +1375,7 @@ footer .foot-logo span { color: var(--accent); }
       </ul>
     </div>
 
-    <div class="gen-result" id="genResult">
-      <p>生成完成！在实际部署中，视频将自动下载。当前为前端演示模式。</p>
-    </div>
+    <div class="gen-result" id="genResult"></div>
   </div>
 </section>
 
@@ -1559,41 +1596,147 @@ function checkReady() {
   document.getElementById('btnGenerate').disabled = !(v && s);
 }
 
-/* ── Generate button — progress simulation ── */
-document.getElementById('btnGenerate').addEventListener('click', () => {
+/* ── Generate button — real backend integration ── */
+function showResult(taskId, data) {
+  const result = document.getElementById('genResult');
+  result.innerHTML = '';
+
+  if (data.video_url) {
+    const video = document.createElement('video');
+    video.src = data.video_url;
+    video.controls = true;
+    video.autoplay = true;
+    video.loop = true;
+    video.playsInline = true;
+    result.appendChild(video);
+
+    const dl = document.createElement('a');
+    dl.href = data.video_url;
+    dl.download = 'timeslice-fusion.mp4';
+    dl.textContent = '下载视频';
+    dl.className = 'btn-download';
+    result.appendChild(dl);
+  }
+
+  if (data.intermediates && Object.keys(data.intermediates).length > 0) {
+    const gallery = document.createElement('div');
+    gallery.className = 'intermediates-gallery';
+    const labels = { cutout: '人像抠图', composite: '人景合成', best_frame: '最佳帧', contact_sheet: '候选帧' };
+    for (const [key, filename] of Object.entries(data.intermediates)) {
+      const url = `/api/result/${taskId}/intermediate/${filename}`;
+      const item = document.createElement('div');
+      item.className = 'intermediate-item';
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = labels[key] || key;
+      img.loading = 'lazy';
+      const span = document.createElement('span');
+      span.textContent = labels[key] || key;
+      item.appendChild(img);
+      item.appendChild(span);
+      gallery.appendChild(item);
+    }
+    result.appendChild(gallery);
+  }
+
+  result.classList.add('active');
+}
+
+function showError(msg) {
+  const result = document.getElementById('genResult');
+  result.innerHTML = '';
+  const p = document.createElement('p');
+  p.style.color = 'hsl(0,60%,50%)';
+  p.textContent = '生成失败: ' + msg;
+  result.appendChild(p);
+  result.classList.add('active');
+  document.getElementById('genProgress').classList.remove('active');
+}
+
+document.getElementById('btnGenerate').addEventListener('click', async () => {
   const prog = document.getElementById('genProgress');
   const bar = document.getElementById('progBar');
   const steps = document.querySelectorAll('#progSteps li');
   const result = document.getElementById('genResult');
   const btn = document.getElementById('btnGenerate');
 
+  // Reset UI
   prog.classList.add('active');
   result.classList.remove('active');
+  result.innerHTML = '';
   btn.disabled = true;
-  btn.querySelector('span').textContent = '生成中...';
-
-  const delays = [800, 1500, 3000, 4500, 5500, 7000];
-  const pcts = [10, 25, 45, 65, 80, 100];
-
+  btn.querySelector('span').textContent = '上传中...';
+  bar.style.width = '0%';
   steps.forEach(s => { s.className = ''; });
 
-  delays.forEach((d, i) => {
-    setTimeout(() => {
-      bar.style.width = pcts[i] + '%';
-      steps.forEach((s, j) => {
-        if (j < i) s.className = 'done';
-        else if (j === i) s.className = 'active';
-        else s.className = '';
-      });
-    }, d);
-  });
+  // 1. Build FormData and POST upload
+  const formData = new FormData();
+  formData.append('video', document.getElementById('videoInput').files[0]);
+  formData.append('selfie', document.getElementById('selfieInput').files[0]);
+  formData.append('style', document.getElementById('styleSelect').value);
+  formData.append('composite_style', document.getElementById('compositeSelect').value);
+  formData.append('duration', document.getElementById('durationSelect').value);
 
-  setTimeout(() => {
-    steps.forEach(s => { s.className = 'done'; });
-    result.classList.add('active');
+  let taskId;
+  try {
+    const res = await fetch('/api/generate', { method: 'POST', body: formData });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || ('上传失败 (' + res.status + ')'));
+    }
+    const data = await res.json();
+    taskId = data.task_id;
+  } catch (e) {
+    showError(e.message);
     btn.querySelector('span').textContent = '重新生成';
     btn.disabled = false;
-  }, 8000);
+    return;
+  }
+
+  btn.querySelector('span').textContent = '生成中...';
+
+  // 2. Connect SSE for real-time progress
+  const es = new EventSource('/api/progress/' + taskId);
+
+  es.addEventListener('step', function(e) {
+    const d = JSON.parse(e.data);
+    steps.forEach(function(s, j) {
+      if (j < d.step) s.className = 'done';
+      else if (j === d.step) s.className = d.status === 'done' ? 'done' : 'active';
+    });
+  });
+
+  es.addEventListener('progress', function(e) {
+    const d = JSON.parse(e.data);
+    bar.style.width = d.percent + '%';
+  });
+
+  es.addEventListener('done', function(e) {
+    es.close();
+    const d = JSON.parse(e.data);
+    steps.forEach(function(s) { s.className = 'done'; });
+    bar.style.width = '100%';
+    showResult(taskId, d);
+    btn.querySelector('span').textContent = '重新生成';
+    btn.disabled = false;
+  });
+
+  es.addEventListener('error', function(e) {
+    if (e.data) {
+      try {
+        const d = JSON.parse(e.data);
+        showError(d.message);
+      } catch (_) {
+        showError('连接中断，请刷新重试');
+      }
+    } else {
+      // SSE connection error — check if task is still pending
+      showError('连接中断，请刷新重试');
+    }
+    es.close();
+    btn.querySelector('span').textContent = '重新生成';
+    btn.disabled = false;
+  });
 });
 </script>
 </body>
