@@ -1032,6 +1032,50 @@ nav.scrolled {
   background: var(--bg-card);
 }
 
+/* ── Roadmap cards ── */
+.roadmap {
+  max-width: 1000px;
+  margin: 3rem auto 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  justify-items: center;
+}
+@media (max-width: 720px) {
+  .roadmap { grid-template-columns: 1fr; }
+}
+.roadmap-card {
+  padding: 1.8rem 1.5rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  text-align: left;
+  transition: transform 0.4s var(--ease-out), box-shadow 0.4s var(--ease-out);
+}
+.roadmap-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 36px hsla(20,20%,10%,0.08);
+}
+.roadmap-icon {
+  font-size: 1.6rem;
+  margin-bottom: 0.8rem;
+}
+.roadmap-card h4 {
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.02em;
+}
+.roadmap-card p {
+  font-family: var(--font-serif);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+  font-weight: 300;
+}
+
 /* ══════════════════════════════════════════
    FOOTER
    ══════════════════════════════════════════ */
@@ -1513,9 +1557,34 @@ footer .foot-logo span { color: var(--accent); }
     <span class="tech-tag">光影自适应合成</span>
     <span class="tech-tag">7 种电影风格预设</span>
   </div>
-</section>
 
-<!-- ══ FOOTER ══ -->
+  <div class="reveal" style="margin-top:3rem;">
+    <div class="section-label">Roadmap</div>
+    <div class="section-title">可扩展能力</div>
+  </div>
+  <div class="roadmap reveal">
+    <div class="roadmap-card">
+      <div class="roadmap-icon">🎙</div>
+      <h4>AI 语音叙事</h4>
+      <p>根据场景分析自动生成旁白文案，TTS 合成与画面节奏同步的语音轨道。支持多音色与多语言，让视频从无声变成有温度的独白。</p>
+    </div>
+    <div class="roadmap-card">
+      <div class="roadmap-icon">📖</div>
+      <h4>回忆录模式</h4>
+      <p>上传多段旅行视频与不同时期自拍，按时间线自动编排、逐站融合、转场拼接，一键生成年度旅行回顾短片。</p>
+    </div>
+    <div class="roadmap-card">
+      <div class="roadmap-icon">🌊</div>
+      <h4>环境音景合成</h4>
+      <p>AI 识别场景语义，自动匹配海浪、山风、鸟鸣等环境音效。不是通用 BGM，而是与画面对齐的沉浸式音景。</p>
+    </div>
+    <div class="roadmap-card">
+      <div class="roadmap-icon">🚀</div>
+      <h4>下一代视频引擎</h4>
+      <p>适配快乐马等新一代高质量视频生成模型，支持更长时长、更高分辨率与更稳定的人物一致性，持续跟进前沿能力。</p>
+    </div>
+  </div>
+</section>
 <footer>
   <div class="foot-logo">时空<span>融影</span></div>
   <p>TimeSlice Fusion v3 · Built with AI · 每一帧风景，都值得有你</p>
